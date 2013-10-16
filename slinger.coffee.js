@@ -1,8 +1,43 @@
-initializeProfiles = ->
-  ["3451256", "82430194"]
+document.addEventListener "DOMContentLoaded", ->
+  chrome.tabs.query active: true, currentWindow: true, (tabs) ->
+    type = undefined
+    url = undefined
+    url = tabs[0].url
+    type = "company"  if url.match(/\bcompany\b/)
+    type = "group"  if url.match(/\groups\b/)
+    initializeProfiles type, url
+  
+  
 
-scrapeProfiles = ->
-  getProfile linkedin_id for linkedin_id in initializeProfiles()
+initializeProfiles = (type, url) ->
+  switch type
+    when "group"
+      new_url = 'http://www.linkedin.com/groups?viewMembers=&gid=' + url.split('gid=')[1].split('&')[0];
+      visitGroupPage(new_url)
+    when "company"
+      new_url = 'http://www.linkedin.com/vsearch/p?trk=rr_connectedness&f_CC=' + url.split('company/')[1].split('?')[0]
+      visitCompanyPage(new_url)
+
+visitGroupPage = (url) ->
+  $.ajax
+    type: "GET"
+    url: url
+    success: (response) ->
+      members = $(response).find('#content').find('.member')
+      linkedin_ids = members.map (x) ->
+        members[x].getAttribute("id").split("-")[1]
+      getProfile linkedin_id for linkedin_id in linkedin_ids
+      next_page = $(response).find('.paginate').find('a').find('strong')
+      new_next_page = next_page[1]
+      new_next_page = next_page[0] unless next_page[1]
+      if new_next_page.innerText.charCodeAt(0) != '171'
+        new_url = 'http://www.linkedin.com/' + $(new_next_page).parent()[0].getAttribute('href')
+        visitGroupPage(new_url)
+      
+      
+
+visitCompanyPage = (url) ->
+  console.log url
 
 
 getProfile = (linkedin_id) ->
@@ -23,6 +58,5 @@ logConsole = (response, linkedin_id) ->
     title = $(position).find('strong.title').find('a')[0].innerText
     company = ( $(position).find('.org.summary')[0] || $(position).find('h4').find('a')[0] ).innerText
     $("#positions-#{linkedin_id}").append "<p><b>#{title}</b> - <i>#{company}</i></p>"
-    
-document.addEventListener "DOMContentLoaded", ->
-  scrapeProfiles()  
+
+    document.body.match(/\bprofile\b,\bview?id=\b/)

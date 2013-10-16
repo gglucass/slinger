@@ -1,18 +1,65 @@
-var getProfile, initializeProfiles, logConsole, scrapeProfiles;
+var getProfile, initializeProfiles, logConsole, visitCompanyPage, visitGroupPage;
 
-initializeProfiles = function() {
-  return ["3451256", "82430194"];
+document.addEventListener("DOMContentLoaded", function() {
+  return chrome.tabs.query({
+    active: true,
+    currentWindow: true
+  }, function(tabs) {
+    var type, url;
+    type = void 0;
+    url = void 0;
+    url = tabs[0].url;
+    if (url.match(/\bcompany\b/)) {
+      type = "company";
+    }
+    if (url.match(/\groups\b/)) {
+      type = "group";
+    }
+    return initializeProfiles(type, url);
+  });
+});
+
+initializeProfiles = function(type, url) {
+  var new_url;
+  switch (type) {
+    case "group":
+      new_url = 'http://www.linkedin.com/groups?viewMembers=&gid=' + url.split('gid=')[1].split('&')[0];
+      return visitGroupPage(new_url);
+    case "company":
+      new_url = 'http://www.linkedin.com/vsearch/p?trk=rr_connectedness&f_CC=' + url.split('company/')[1].split('?')[0];
+      return visitCompanyPage(new_url);
+  }
 };
 
-scrapeProfiles = function() {
-  var linkedin_id, _i, _len, _ref, _results;
-  _ref = initializeProfiles();
-  _results = [];
-  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-    linkedin_id = _ref[_i];
-    _results.push(getProfile(linkedin_id));
-  }
-  return _results;
+visitGroupPage = function(url) {
+  return $.ajax({
+    type: "GET",
+    url: url,
+    success: function(response) {
+      var linkedin_id, linkedin_ids, members, new_next_page, new_url, next_page, _i, _len;
+      members = $(response).find('#content').find('.member');
+      linkedin_ids = members.map(function(x) {
+        return members[x].getAttribute("id").split("-")[1];
+      });
+      for (_i = 0, _len = linkedin_ids.length; _i < _len; _i++) {
+        linkedin_id = linkedin_ids[_i];
+        getProfile(linkedin_id);
+      }
+      next_page = $(response).find('.paginate').find('a').find('strong');
+      new_next_page = next_page[1];
+      if (!next_page[1]) {
+        new_next_page = next_page[0];
+      }
+      if (new_next_page.innerText.charCodeAt(0) !== '171') {
+        new_url = 'http://www.linkedin.com/' + $(new_next_page).parent()[0].getAttribute('href');
+        return visitGroupPage(new_url);
+      }
+    }
+  });
+};
+
+visitCompanyPage = function(url) {
+  return console.log(url);
 };
 
 getProfile = function(linkedin_id) {
@@ -38,11 +85,8 @@ logConsole = function(response, linkedin_id) {
     position = positions[_i];
     title = $(position).find('strong.title').find('a')[0].innerText;
     company = ($(position).find('.org.summary')[0] || $(position).find('h4').find('a')[0]).innerText;
-    _results.push($("#positions-" + linkedin_id).append("<p><b>" + title + "</b> - <i>" + company + "</i></p>"));
+    $("#positions-" + linkedin_id).append("<p><b>" + title + "</b> - <i>" + company + "</i></p>");
+    _results.push(document.body.match(/\bprofile\b,\bview?id=\b/));
   }
   return _results;
 };
-
-document.addEventListener("DOMContentLoaded", function() {
-  return scrapeProfiles();
-});
