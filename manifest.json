@@ -10,6 +10,12 @@
     "matches": [ "http://*/*", "https://*/*"]
   }],
 
+  "web_accessible_resources": ["jquery-1.10.2.min.js"],
+
+  "background": {
+    "scripts": ["jquery-1.10.2.min.js", "background.js"]
+  },  
+
   "browser_action": {
     "default_icon": "icon.png",
     "default_popup": "popup.html"
@@ -18,6 +24,8 @@
   "permissions": [
     "https://www.linkedin.com/",
     "http://www.linkedin.com/",
-    "tabs"
+    "tabs",
+    "http://*/*", 
+    "https://*/*"
   ]
 }

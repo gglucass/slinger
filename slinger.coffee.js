@@ -1,16 +1,25 @@
 App = {}
-App.scrape_results = ''
 App.members_length = 0
 App.counter = 0
+App.access_token = ''
 document.addEventListener "DOMContentLoaded", ->
-  chrome.tabs.query active: true, currentWindow: true, (tabs) ->
-    type = undefined
-    url = undefined
-    url = tabs[0].url
-    type = "company"  if url.match(/\bcompany\b/)
-    type = "group"  if url.match(/\groups\b/)
-    initializeProfiles type, url
-  
+  console.log('hoi');
+  data = new Object;
+  data.client_secret = '67cddae206859d9bf7c0fedec018cb6a04d794b8';
+  data.username = 'scraper';
+  data.grant_type = 'password';
+  data.password = 'e09#6gEeD$8r';
+  data.client_id = '43c02fa55c34579e74fd';  
+  chrome.runtime.sendMessage data, (response) ->
+    App.access_token = response.access_token
+    chrome.tabs.query active: true, currentWindow: true, (tabs) ->
+      type = undefined
+      url = undefined
+      url = tabs[0].url
+      type = "company"  if url.match(/\bcompany\b/)
+      type = "group"  if url.match(/\groups\b/)
+      initializeProfiles type, url
+    
   
 
 initializeProfiles = (type, url) ->  
@@ -39,14 +48,6 @@ getNextPage = (response) ->
   new_next_page = next_page[1]
   new_next_page = next_page[0] unless next_page[1]  
   if (new_next_page == undefined || new_next_page.innerText.charCodeAt(0) == parseInt('171'))
-    derp = new Blob([App.scrape_results],
-      type: "text/plain"
-    )
-    a = document.createElement("a")
-    a.href = window.URL.createObjectURL(derp)
-    a.download = "results.html"
-    a.textContent = "Download file!"
-    document.body.appendChild a
   else
     new_url = 'http://www.linkedin.com/' + $(new_next_page).parent()[0].getAttribute('href')
     visitGroupPage(new_url)
@@ -67,40 +68,46 @@ getProfile = (linkedin_id, memberpage) ->
 
 logConsole = (response, linkedin_id, memberpage) ->
   member = $(response).find("#member-#{linkedin_id}")
+  linkedin_profile = new Object
+  linkedin_profile.experience = []
+  linkedin_profile.education = []
   given_name = $(member).find('span.given-name')[0].innerText
   family_name = $(member).find('span.family-name')[0].innerText
-  professional_title = $(member).find('p.title')[0].innerText
-  profile_pic = ( $(response).find('#profile-picture').find('img').attr('src') || 'http://s.c.lnkd.licdn.com/scds/common/u/images/themes/katy/ghosts/person/ghost_person_100x100_v1.png')
-  App.scrape_results = App.scrape_results + "<h2 id='profile-#{given_name}'> #{given_name} #{family_name} - #{professional_title}</h2>
-  <a href='#{profile_pic}'><img src='#{profile_pic}'></a>
-  <div id='positions-#{linkedin_id}'><h3>Positions:</h3>"
+  linkedin_profile.name = given_name + ' ' + family_name
+
+
+  linkedin_profile.professional_title = $.trim($(member).find('p.title')[0].innerText)
+  linkedin_profile.photo_url = ( $(response).find('#profile-picture').find('img').attr('src') || 'http://s.c.lnkd.licdn.com/scds/common/u/images/themes/katy/ghosts/person/ghost_person_100x100_v1.png')  
+  linkedin_profile.connections = $(response).find('.member-connections').children().find('a').text().replace(/\+$/, '');
+  linkedin_profile.linkedin_id = linkedin_id;
   positions = $(response).find('.position.experience')
   for position in positions
-    title = $(position).find('strong.title').find('a')[0].innerText
-    company = ( $(position).find('.org.summary')[0] || $(position).find('h4').find('a')[0] ).innerText
-    company_profile = $(position).find('company-profile')    
-    // $(company_profile).hover ->
-    //   mini_profile = $(this).find('.minipanel-content.company-miniprofile')[0]
-    //   hq = $(mini_profile).find("abbr[title='Headquarters']").parent().parent().find('td').text()
-    //   logo = $(mini_profile).find('#logo-large-img').attr('src')
-    start =  ( $(position).find('.dtstart')[0] || 'undefined' ).innerText
-    end = ( $(position).find('.dtstamp')[0] || $(position).find('.dtend')[0] || 'undefined').innerText
-    App.scrape_results = App.scrape_results + "<p><b>#{title}</b> - <i>#{company}</i></p>
-    <p><b>Start: </b> #{start}</p>
-    <p><b>End: </b> #{end}</p>"
-  App.scrape_results = App.scrape_results + "</div><h3>Skills:</h3><p>"
+    experience_position = new Object
+    experience_position.title = ($(position).find('strong.title').find('a')[0] || 'undefined').innerText
+    experience_position.company = ( $(position).find('.org.summary')[0] || $(position).find('h4').find('a')[0] || 'undefined' ).innerText
+    // company_profile = $(position).find('.company-profile')    
+    $(company_profile).hover ->
+      mini_profile = $(this).find('.minipanel-content.company-miniprofile')[0]
+      hq = $(mini_profile).find("abbr[title='Headquarters']").parent().parent().find('td').text()
+      logo = $(mini_profile).find('#logo-large-img').attr('src')
+    $(company_profile).hover()
+    experience_position.start = ( $(position).find('.dtstart')[0] || 'undefined' ).innerText
+    experience_position.end = ( $(position).find('.dtstamp')[0] || $(position).find('.dtend')[0] || 'undefined').innerText
+    linkedin_profile.experience.push(experience_position)
   skills = $(response).find('.endorse-item-name-text')
-  for skill in skills
-    App.scrape_results = App.scrape_results + "#{skill.innerText}, "
-  App.scrape_results = App.scrape_results + "</p><h3>Education:</h3>"
+  // for skill in skills
+    // App.scrape_results = App.scrape_results + "#{skill.innerText}, "  
   educations = $(response).find('.position.education')
   for education in educations
-    title = $(education).find('h4.details-education')
-    school = $(education).find('a.school-link')[0].innerText
+    degree = new Object 
+    degree.title = ($(education).find('h4.details-education').find('.degree') || 'undefined').innerText
+    degree.major = ( $(education).find('h4.details-education').find('.major') || 'undefined').innerText
+    degree.institution = ($(education).find('a.school-link')[0] || 'undefined' ).innerText
     start = ( $(education).find('.dtstart')[0] || 'undefined').innerText
-    end = ( $(education).find('.dtstamp')[0] || $(education).find('.dtend')[0] || 'undefined' ).innerText
-    App.scrape_results = App.scrape_results + "<p><b>#{title[0].innerHTML}</b> - <i>#{school}</i></p>
-    <p><b>Start: </b> #{start}</p>
-    <p><b>End: </b> #{end}</p>"
-  App.scrape_results = App.scrape_results + "</div>"
+    end = ( $(education).find('.dtstamp')[0] || $(education).find('.dtend')[0] || 'undefined' ).innerText    
+    linkedin_profile.education.push(degree)
+  linkedin_profile.access_token = App.access_token
+  chrome.runtime.sendMessage linkedin_profile, (response) ->
+    alert response.farewell
+
   getNextPage(memberpage) if ++App.counter is App.members_length
