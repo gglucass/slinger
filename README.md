@@ -31,4 +31,3 @@ The current codebase is fairly tightly coupled and handles errors ungracefully. 
   8. handleProfile() visits the profile page of the linkedin member, builds a scraped profile by collecting all relevant fields with JQuery and submits this to the home server.
 
 \* (member_number * random[0..1] * 1) second so you get short bursts of visits and longer waits. Could probably be randomized in a smarter way. 
-
