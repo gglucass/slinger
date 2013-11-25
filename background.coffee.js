@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener (request, sender, sendResponse) ->
 
     when "getProfile"
       setTimeout (->
-        handleProfile request.linkedin_id, request.memberpage
+        handleProfile request.linkedin_id
         sendResponse derp: "achja!"
       ), Math.random() * request.member_number * 1000
   true
@@ -25,7 +25,7 @@ getAccessToken = (request_details) ->
     success: (response) ->
       sendResponse access_token: response.access_token
 
-handleProfile = (linkedin_id, memberpage) ->
+handleProfile = (linkedin_id) ->
   $.ajax
     type: "GET"
     url: "http://www.linkedin.com/profile/view?noScript=1&id=" + linkedin_id

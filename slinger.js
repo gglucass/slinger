@@ -81,7 +81,6 @@ getProfile = function(linkedin_id, memberpage) {
     return console.log(response);
   });
   if (++App.counter === App.members_length) {
-    console.log("we zijn al hier!");
     return setTimeout((function() {
       return getNextPage(memberpage);
     }), 20000);

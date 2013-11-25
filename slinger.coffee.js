@@ -47,13 +47,11 @@ getProfile = (linkedin_id, memberpage) ->
   chrome.runtime.sendMessage
     kind: "getProfile"
     linkedin_id: linkedin_id
-    memberpage: memberpage
     member_number: App.counter
   , (response) ->
     console.log response
 
   if ++App.counter is App.members_length
-    console.log "we zijn al hier!"
     setTimeout (->
       getNextPage memberpage
     ), 20000
